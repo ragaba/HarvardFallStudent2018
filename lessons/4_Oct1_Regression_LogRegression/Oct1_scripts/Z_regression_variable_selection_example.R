@@ -9,7 +9,7 @@ options(scipen=999)
 library(vtreat)
 
 # SetWD
-setwd("C:/Users/Edward/Desktop/HarvardSummerAdmin2018/Lessons/3_July18-Reg_LogReg")
+setwd("~/HarvardFallStudent2018/lessons/4_Oct1_Regression_LogRegression/Oct1_data")
 
 # Dat
 cars <- read.csv('oldCar.csv')

@@ -9,7 +9,7 @@ library(MLmetrics)
 library(pROC)
 
 # wd
-setwd("~/HarvardSummerAdmin2018/Lessons/3_July18-Reg_LogReg/day3_data")
+setwd("~/HarvardFallStudent2018/lessons/4_Oct1_Regression_LogRegression/Oct1_data")
 
 # Data
 bball <- read.csv('ncaa.csv')
