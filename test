@@ -1,0 +1,309 @@
+#' Rogers K Agaba
+#' 10-14
+#' Homework 4 
+
+
+library(class)
+library(readr)
+library(caret)
+library(vtreat)
+library(class)
+library(dplyr)
+
+# read the derived dataset
+setwd("~/HarvardFallStudent2018/lessons/5_Oct15_LogRegression_KNN")
+df<- read.csv("Stat.csv", stringsAsFactors = FALSE)
+
+
+str(df)
+
+# Function to normalize
+
+##normalize <- function(x) {
+#  return ((x - min(x)) / (max(x) - min(x))) }
+#or 
+#scale(df, center=T, scale=T)
+
+# Create a training dataset
+
+train <- df[1:2,1:2]
+
+test <- df[3,1:2]
+
+# Convert the chr data type to numeric to make it suitable for knn algorithm
+
+train$Category[train$Category=="Stat"] <- 1
+
+train$Category[train$Category=="Other"] <- 0
+
+# Convert the numeric into factor type
+
+train$Category <- as.factor(train$Category)
+
+# Get the outcome
+
+train_labels <- as.factor(df[1:2,3])
+
+# Convert the chr data type to numeric to make it suitable for knn algorithm
+# To set this predictor variable to be of 2 bianries I am using value '1' again
+
+test_2 <- test[,]
+
+test_2$Category[test_2$Category=="IT"] <- 1
+
+# Convert the numeric into factor type
+
+test_2$Category <- as.factor(test_2$Category)
+
+
+# Convert the chr data type to numeric to make it suitable for knn algorithm
+# To set this predictor variable to be of 3 bianries I am using value '2'
+
+test_3 <- test[,]
+
+test_3$Category[test_3$Category=="IT"] <- 2
+
+# Convert the numeric into factor type
+
+test_3$Category <- as.factor(test_3$Category)
+
+# Function to find euclidean distance
+
+euc.dist <- function(x1, x2) sqrt(sum((x1 - x2) ^ 2))
+
+# Calculate euclidean distance between prospect & other 2 customers of derived dataset with 2 binaries
+
+prospect <- unlist(test_2)
+
+cust_1 <- unlist(train[1,])
+
+cust_2 <- unlist(train[2,])
+
+euc.dist(cust_1,prospect) # Distance between customer 1 & prospect is 1
+
+euc.dist(cust_2,prospect) # Distance between customer 2 & prospect is 0.1
+
+# Calculate euclidean distance between prospect & other 2 customers of derived dataset with 3 binaries
+
+prospect_3 <- unlist(test_3)
+
+cust_1 <- unlist(train[1,])
+
+cust_2 <- unlist(train[2,])
+
+euc.dist(cust_1,prospect_3) # Distance between customer 1 & prospect is 1
+
+euc.dist(cust_2,prospect_3) # Distance between customer 2 & prospect is 0.1
+
+# knn algorithm for derived dataset with 2 binaries
+
+test_pred_2 <- knn(train = train, test = test_2,cl = train_labels, k=1)
+test_pred_2
+# knn algorithm for derived dataset with 3 binaries
+
+test_pred_3 <- knn(train = train, test = test_3,cl = train_labels, k=1)
+test_pred_3
+# There is no change when using 2/3 dummies
+
+# Start over
+rm(list=ls()) 
+
+# Libs
+library(caret)
+library(vtreat)
+library(class)
+library(dplyr)
+
+# WD
+setwd("~/HarvardFallStudent2018/book datasets")
+
+# Data
+df <- read.csv("UniversalBank.csv")
+View(df)
+# Perform EDA
+table(df$Personal.Loan)
+sapply(df, class)
+summary(df)
+
+# Drop per directions
+df$ID       <- NULL  
+df$ZIP.Code <- NULL
+
+# In this example EDU is actually a factor!
+df$Education <- as.factor(df$Education)
+nlevels(df$Education)
+
+# Partition per directions
+set.seed(1234)
+splitPercent <- round(nrow(df) %*% 0.6) ## training is 60%
+totalRecords <- 1:nrow(df) ## sample from 1 to number of rows in df dataset
+idx <- sample(totalRecords, splitPercent)
+
+trainDat <- df[idx,] ## train set 
+testDat <- df[-idx,]  ## test set 
+
+# Treatment to account for dummies, although its a pretty clean data set, EDU could be a dummy but is still ordinal...so?
+xVars <- c("Age", "Experience", "Income", "Family", "CCAvg",
+           "Education", "Mortgage", "Securities.Account",
+           "CD.Account", "Online", "CreditCard" )
+plan <- designTreatmentsC(trainDat,xVars,'Personal.Loan',1) ## if personal loan is accepted, then 1 and if not accepted , 0 
+
+# Prepare
+treatedTrain <- prepare(plan, trainDat)
+
+# Fit - WARNING!!!  
+knnFit <- train(Personal.Loan ~ ., 
+                data = treatedTrain, method = "knn", 
+                preProcess = c("center","scale"), tuneLength = 10)
+
+# Make sure you know your data problem...its classification!
+knnFit <- train(as.factor(Personal.Loan) ~ ., 
+                data = treatedTrain, method = "knn", 
+                preProcess = c("center","scale"), tuneLength = 10)
+
+unique(df$Education)
+
+# 7.2A
+newCustomer <- data.frame(Age                = 40,
+                          Experience         = 10,
+                          Income             = 84,
+                          Family             = 2,
+                          CCAvg              = 2, 
+                          Education          = 2, 
+                          Mortgage           = 0, 
+                          Securities.Account = 0,
+                          CD.Account         = 0, 
+                          Online             = 1,
+                          CreditCard         = 1)
+
+newCustomer$Education <- as.factor(newCustomer$Education) ## here we declare Education as a factor 
+treatedNewCU          <- prepare(plan, newCustomer)
+
+# this is the version with a higher K
+predict(knnFit, treatedNewCU)
+
+# Since 7.2a demands k=1, we make a single model bc caret's implementation starts at 5.
+allData    <- full_join(df, newCustomer) ## join new customer to the original dataset 
+treatedAll <- prepare(plan, allData) ## we prepare all the data so that we can get the dummy variables the way we need them
+
+y<- treatedAll$Personal.Loan ## assign Y to personal loan
+treatedAll$Personal.Loan <- NULL ## we drop it because we do not want to scale our dependent variable which is the personal loan, we only want to scale our informative features 
+
+scaleAll   <- scale(treatedAll[1:5001,], scale = T, center=T)
+
+specialK   <- knn(train = scaleAll[1:5000, ],
+                  test  = scaleAll[5001,],
+                  cl = as.factor(y)[1:5000], k = 1)
+specialK
+
+# Did the person accept the personal loan offer?
+# Answer: 0, Not Accept 
+
+# 7.2B
+knnFit
+plot(knnFit)
+# The most balanced K is:
+# Answer: 5   
+
+# 7.2C
+# Prep the validation set
+treatedTest <- prepare(plan, testDat)
+testClasses <- predict(knnFit, treatedTest) ## here knnFit will automatically optimize and use the best k for us
+(confusionMatrix(as.factor(testDat$Personal.Loan),testClasses))
+
+# 7.2D
+#Classify the customer using the best k.
+
+bestk   <- knn(train = scaleAll[1:5000, ],
+                  test  = scaleAll[5001,],
+                  cl = as.factor(y)[1:5000], k = 5)
+bestk
+
+
+
+# 7.2 E 
+# Now redo your partitions into 3 parts.  Go back to our script examples for this code.  Make predictions, construct the confusion matrices and review to answer the question.
+
+# Start over
+rm(list=ls()) 
+
+library(caret)
+library(vtreat)
+library(class)
+library(dplyr)
+
+# Data
+df <- read.csv("UniversalBank.csv")
+View(df)
+# Perform EDA
+table(df$Personal.Loan)
+sapply(df, class)
+summary(df)
+
+# Drop per directions
+df$ID       <- NULL  
+df$ZIP.Code <- NULL
+
+# In this example EDU is actually a factor!
+df$Education <- as.factor(df$Education)
+nlevels(df$Education)
+
+# Partition per directions Train 50%/Validation 30% /Testing 20%
+set.seed(1234)
+trainPercent <-  round(nrow(df) %*% .5)
+validationPercent <- round(nrow(df) %*% .3)
+
+# Sample index for training
+trainIdx <- sample(1:nrow(df), trainPercent)
+
+# Identify the rows not in the training set, its the "difference" 
+remainingRows <-setdiff(1:nrow(df), trainIdx)
+## what is left, we use a function called setdiff- what is left over
+
+# Create another sample but limit the row numbers to only those identified as *not* in training to get the validation index
+validationIdx <-sample(remainingRows, validationPercent)
+
+# With the two idx vectors of randomly generated numbers, without any overlap you can put them in the "row" position for indexing. 
+trainSet <- df[trainIdx, ]
+validationSet <- df[validationIdx, ]
+
+# Here you combine both the index and put that with a minus.  Essentially removing any rows in training, or validation indexing leaving you with the test set.
+testSet <- df[-c(trainIdx, validationIdx), ]
+
+# Chk
+nrow(trainSet) + nrow(validationSet) + nrow(testSet)
+nrow(df)
+
+# Prepare Train set
+treatedTrain <- prepare(plan, trainSet)
+
+# Prep the validation set
+treatedvalid <- prepare(plan, validationSet)
+
+# Prepare test
+treatedTest <- prepare(plan, testSet)
+
+knnFit <- train(as.factor(Personal.Loan) ~ ., 
+                data = treatedTrain, method = "knn", 
+                preProcess = c("center","scale"), tuneLength = 10)
+
+
+# training set accuracy
+treatedTrain <- prepare(plan, trainSet)
+trainClasses<-predict(knnFit,treatedTrain)
+(confusionMatrix(as.factor(trainSet$Personal.Loan),trainClasses)) #predictions then reference (actual) to see how well we did 
+
+# test set accuracy
+treatedTest <- prepare(plan, testDat)
+testClasses <- predict(knnFit, treatedTest) ## here knnFit will automatically optimize and use the best k for us
+(confusionMatrix(as.factor(testDat$Personal.Loan),testClasses))
+
+
+# Validation set accuracy
+treatedvalid <- prepare(plan, validationSet)
+validClasses <- predict(knnFit, treatedvalid) ## here knnFit will automatically optimize and use the best k for us
+(confusionMatrix(as.factor(validationSet$Personal.Loan),validClasses))
+
+
+
+# End
